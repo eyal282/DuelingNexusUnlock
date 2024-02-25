@@ -1,0 +1,21 @@
+{
+	"name": "Dueling Nexus Unlock",
+	"manifest_version": 3,
+	"version": "1.3",
+	"description": "Unlocks as much goodies as possible",
+	"permissions": [
+		"tabs",
+		"storage",
+		"scripting",
+		"webNavigation"
+	],
+	"action": {
+		"default_title": "Settings",
+		"default_icon": "icon.png",
+		"default_popup": "onextensionpressed.html"
+	},
+	"host_permissions": [ "*://*.duelingnexus.com/" ],
+	"background": {
+		"service_worker": "background.js"
+	}
+}
