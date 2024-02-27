@@ -1,7 +1,7 @@
 {
 	"name": "Dueling Nexus Unlock",
 	"manifest_version": 3,
-	"version": "1.3",
+	"version": "1.5",
 	"description": "Unlocks as much goodies as possible",
 	"permissions": [
 		"tabs",

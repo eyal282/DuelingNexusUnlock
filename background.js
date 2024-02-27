@@ -612,24 +612,129 @@ function censorInjectFunction(potOfSwitch, femOfSwitch)
 	*/
 }
 
+// Function is called inside itself during Game.onGameWin and Game.onGameStart
 function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 {
 //	let Eyal_blob = new Blob([negate_icon_blob[0].text], {type: negate_icon_blob[0].type});
 	
-	console.log("a")
-	console.log(extensionActive)
-	console.log("b")
-	console.log(selectionUI)
-	if(!extensionActive)
+	Eyal_extensionActive = extensionActive;
+	Eyal_femOfSwitch = femOfSwitch;
+	Eyal_selectionUI = selectionUI;
+	Eyal_cardLogging = cardLogging;
+	
+	if(!Eyal_extensionActive)
 	{
-		femOfSwitch = false;
-		selectionUI = false;
-		cardLogging = false;
+		Eyal_femOfSwitch = false;
+		Eyal_selectionUI = false;
+		Eyal_cardLogging = false;
 	}
 	
 	// Don't inject until jQuery is added.
 	if(typeof window.jQuery === "undefined")
 		return;
+	
+	// Start of anti window close
+	let PAGESTATE_NORMAL = 0;
+	let PAGESTATE_DECK_EDITOR = 1;
+	let PAGESTATE_DUEL = 2;
+	let PAGESTATE_REPLAY = 3;
+	
+	let Eyal_pageState = PAGESTATE_NORMAL;
+	
+	if(typeof Game !== "undefined")
+	{
+		Eyal_pageState = PAGESTATE_DUEL;
+		
+		if(Game.isReplay)
+		{
+			Eyal_pageState = PAGESTATE_REPLAY;
+		}
+		else if($("#game-not-ready-button").length == 0)
+		{
+			Eyal_pageState = PAGESTATE_DECK_EDITOR;
+		}
+	}
+	
+	if(Eyal_pageState == PAGESTATE_DECK_EDITOR)
+	{
+		window.onbeforeunload = function() { return true }
+	}
+	else if(Eyal_pageState == PAGESTATE_DUEL)
+	{
+		if(Game.players[0].name == Game.username || Game.isTag)
+		{
+			Eyal_yourIndex = 0;
+			Eyal_yourOpponentIndex = 1;
+		}
+		else if(Game.players[1].name == Game.username)
+		{
+			Eyal_yourIndex = 1;
+			Eyal_yourOpponentIndex = 0;
+		}
+		
+		if(Game.isStarted && !Game.hasGameEnded)
+		{
+			window.onbeforeunload = function() { return true }
+		}
+		else
+		{
+			window.onbeforeunload = undefined
+		}
+	}
+	else if(Eyal_pageState == PAGESTATE_REPLAY)
+	{
+		Eyal_yourIndex = 0;
+		Eyal_yourOpponentIndex = 1;
+	}
+	
+	if(typeof Eyal_originalOnGameWin === "undefined" && typeof Game.onGameWin !== "undefined")
+	{
+		Function.prototype.clone = function()
+		{
+			var that = this;
+			var temp = function temporary() { return that.apply(this, arguments); };
+			for(var key in this) {
+				if (this.hasOwnProperty(key)) {
+					temp[key] = this[key];
+				}
+			}
+			return temp;
+		};
+		Eyal_originalOnGameWin = Game.onGameWin.clone();
+	}
+	Game.onGameWin = function(a)
+	{
+		Eyal_originalOnGameWin(a);
+		
+		injectFunction(Eyal_extensionActive, Eyal_femOfSwitch, Eyal_selectionUI, Eyal_cardLogging);
+	}
+	
+
+	if(typeof Eyal_originalOnGameStart === "undefined" && typeof Game.onGameStart !== "undefined")
+	{
+		Function.prototype.clone = function()
+		{
+			var that = this;
+			var temp = function temporary() { return that.apply(this, arguments); };
+			for(var key in this) {
+				if (this.hasOwnProperty(key)) {
+					temp[key] = this[key];
+				}
+			}
+			return temp;
+		};
+		Eyal_originalOnGameStart = Game.onGameStart.clone();
+	}
+	Game.onGameStart = function(a)
+	{
+		Eyal_originalOnGameStart(a);
+		
+		Eyal_fdBanishURL1 = undefined;
+		Eyal_fdBanishURL2 = undefined;
+		
+		injectFunction(Eyal_extensionActive, Eyal_femOfSwitch, Eyal_selectionUI, Eyal_cardLogging);
+	}
+	// End of anti window close.
 	
 	if(typeof Mexp === "undefined" && document.readyState == "complete")
 	{
@@ -668,13 +773,14 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 	if(typeof Eyal_checkHeartbeat !== "undefined")
 		console.log("Beat");
 	
+
 	// Start of card tutor logger
 	Game.getRarityType = function(a)
 	{
 		var b = Engine.getCardData(a);
 
 		// Start of Eyal's code.
-		if(cardLogging)
+		if(Eyal_cardLogging)
 		{
 			let children = $("#game-event-log-content").children();
 			
@@ -754,6 +860,128 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 	// End of card tutor logger
 
 	// Start of master duel selection UI
+	let heightDefeceit = 125
+	
+	if(typeof Eyal_lastHeightDefeceit === "undefined" || heightDefeceit != Eyal_lastHeightDefeceit)
+	{
+		Eyal_fdBanishURL1 = undefined;
+		Eyal_fdBanishURL2 = undefined;
+	}
+	
+	Eyal_lastHeightDefeceit = heightDefeceit;
+	
+	if(typeof Eyal_fdBanishURL1 === "undefined" && (Eyal_pageState == PAGESTATE_DUEL || Eyal_pageState == PAGESTATE_REPLAY))
+	{
+		async function loadImage(url)
+		{
+			return new Promise((resolve, reject) =>
+			{
+				const img = new Image();
+				img.src = url;
+
+				img.onload = () => resolve(img);
+				img.onerror = (error) => reject(error);
+			});
+		}
+
+		async function Eyal_getFDBanishURL(url, retriesLeft)
+		{
+			url = "https://duelingnexus.com/assets/images/cover.png";
+			
+			if(typeof retriesLeft === "undefined")
+			{
+				retriesLeft = 100;
+			}
+
+			retriesLeft--;
+
+			let URL2;
+			
+			if(retriesLeft <= 0)
+				return;
+
+			let img;
+			
+			try
+			{
+				img = await loadImage(url)
+			}
+			catch(error) {
+				console.log(error)
+				return await retainBlackPart(url, retriesLeft)
+			}
+			
+			// Create a canvas element dynamically
+			let canvas = document.createElement('canvas');
+			let ctx = canvas.getContext('2d');
+
+			// Set canvas dimensions to match the image
+			canvas.width = img.width;
+			canvas.height = img.height;
+
+			// Draw the image onto the canvas
+			ctx.drawImage(img, 0, 0);
+
+			// Define the coordinates for the diagonal line
+			const startX = 0;
+			const startY = canvas.height; // Start from the bottom left
+			const endX = canvas.width;
+			const endY = heightDefeceit; // End at the top right
+
+			// Set the line style (color, thickness, etc.)
+			// Draw the diagonal line
+			ctx.beginPath();
+			ctx.lineWidth = 5;
+			ctx.moveTo(startX, startY);
+			ctx.lineTo(endX, endY);
+			ctx.lineTo(0, endY);
+			ctx.fill()
+			ctx.clip()
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			URL2 = canvas.toDataURL();
+
+
+
+			
+			let img2 = await loadImage(URL2);
+			
+			canvas = document.createElement('canvas');
+			ctx = canvas.getContext('2d');
+
+			// Set canvas dimensions to match the image
+			canvas.width = img2.width;
+			canvas.height = img2.height;
+
+			// Draw the image onto the canvas
+			ctx.drawImage(img2, 0, 0);
+			
+			// Fill everything above the line
+			ctx.beginPath();
+			ctx.lineWidth = 5;
+			ctx.moveTo(0, 0);
+			ctx.lineTo(canvas.width, 0);
+			ctx.lineTo(canvas.width, heightDefeceit);
+			ctx.lineTo(0, heightDefeceit);
+			ctx.clip()
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			// Create a clipping path based on the line
+
+			// Clear the canvas (remove everything outside the clipping path)
+			//ctx.clearRect(0, canvas.height, canvas.width, heightDefeceit);
+
+			// Replace the original image with the edited canvas
+			return canvas.toDataURL();
+		}
+
+		setTimeout(async function()
+		{
+			Eyal_fdBanishURL1 = await Eyal_getFDBanishURL(Game.getSleevePath(Eyal_yourIndex));
+			Eyal_fdBanishURL2 = await Eyal_getFDBanishURL(Game.getSleevePath(Eyal_yourOpponentIndex));	
+		}, 50);
+		
+	}
 	if(typeof Eyal_originalOpenAdvancedSelection === "undefined" && typeof Game.openAdvancedSelection !== "undefined")
 	{
 		Function.prototype.clone = function()
@@ -773,13 +1001,16 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 	{
 		Eyal_originalOpenAdvancedSelection(a, b);
 		
-		Eyal_masterDuelUI();
+		if(Eyal_selectionUI)
+		{
+			Eyal_masterDuelUI();
+		}
 	}
 	
 	window.Eyal_masterDuelUI = function()
 	{
-		
-		let locations_arr = ["Monster Zone", "Extra Deck", "Deck", "Hand", "Graveyard", "GY", "Banish Pile", "Banished Zone", "Banishment", "Opponent's Monster Zone", "Opponent's Extra Deck", "Opponent's Deck", "Opponent's Hand", "Opponent's Graveyard", "Opponent's GY", "Opponent's Banish Pile", "Opponent's Banished Zone", "Opponent's Banishment"];
+		let SELECTED_CARDS_NAME = "Selected Cards";
+		let locations_arr = ["Monster Zone", "Spell/Trap Zone", "Extra Deck", "Deck", "Hand", "Graveyard", "GY", "Banish Pile", "Banished Zone", "Banishment", "Opponent's Monster Zone", "Opponent's Spell/Trap Zone", "Opponent's Extra Deck", "Opponent's Deck", "Opponent's Hand", "Opponent's Graveyard", "Opponent's GY", "Opponent's Banish Pile", "Opponent's Banished Zone", "Opponent's Banishment"];
 		
 		for(let abc=0;abc < locations_arr.length;abc++)
 		{
@@ -788,6 +1019,7 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 			$("#game-selection-list").append(div);
 			div.append(`<b><header>${locations_arr[abc]}</header></b>`);
 			
+			// Don't confuse Game.selectableCards with Game.selectedCards
 			for(let def=0;def < Game.selectableCards.length;def++)
 			{
 				let cardRef = Game.selectableCards[def];
@@ -804,16 +1036,34 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 				// Turns "Deck (50)" into "Deck"
 				cardLocation = cardLocation.replace(/\s*\(\d+\)/, "");
 				
-				if(rgb2hex(color).toUpperCase() == "#FF0000")
+				if(rgb2hex(color).toUpperCase() == "#ff0000")
 				{
 					cardLocation = `Opponent's ${cardLocation}`;
 				}
 				
-				if(cardLocation == locations_arr[abc])
+				if(cardLocation == locations_arr[abc] && !Eyal_isIn(Game.selectedCards, Eyal_card))
 				{
 					div.append(cardDiv);
 				}
-			};
+				
+				
+			}
+			
+			let selected_cards_div = $(`<div class="cards-selection-container">`);
+			
+			$("#game-selection-list").append(selected_cards_div);
+			selected_cards_div.append(`<b><header><font color="#ff0000">${SELECTED_CARDS_NAME}</header></b>`);
+			
+			// Don't confuse Game.selectableCards with Game.selectedCards
+			for(let def=0;def < Game.selectedCards.length;def++)
+			{
+				let cardRef = Game.selectedCards[def];
+				let Eyal_card = Game.getCard(cardRef.controller, cardRef.location, cardRef.sequence, cardRef.position)
+				
+				let cardDiv = Eyal_card.advancedSelectionImage.parent()
+	
+				selected_cards_div.append(cardDiv);
+			}
 		}
 		
 		$(".cards-selection-container").each(function()
@@ -836,8 +1086,46 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 				$(this).hide();
 			}
 		});
+		
+		// Start of face-down banished visibility enhancers
+		// Don't confuse Game.selectableCards with Game.selectedCards
+		if(typeof Eyal_fdBanishURL1 !== "undefined")
+		{
+			for(let def=0;def < Game.selectableCards.length;def++)
+			{
+				let cardRef = Game.selectableCards[def];
+				let Eyal_card = Game.getCard(cardRef.controller, cardRef.location, cardRef.sequence, cardRef.position)
+				
+				let cardDiv = Eyal_card.advancedSelectionImage.parent()
+
+				let cardImage = cardDiv.find(".game-selection-card-image")
+				
+				if(Eyal_card.dataReceived && Eyal_card.position == CardPosition.FACEDOWN && Eyal_card.location == CardLocation.BANISHED)
+				{
+					let otherImage = cardImage.clone()
+					
+					otherImage.css("position", "absolute")
+					
+					if(Eyal_card.controller == Eyal_yourIndex)
+						otherImage.attr("src", Eyal_fdBanishURL1)
+					
+					else if(Eyal_card.controller == Eyal_yourOpponentIndex)
+						otherImage.attr("src", Eyal_fdBanishURL2)
+					
+					otherImage.insertBefore(cardImage)
+					Engine.setCardRarityImageElement(cardImage, Eyal_card.alias, Math.floor(Eyal_card.code / 1E11), Game.getRarityType(Eyal_card.alias));
+
+					
+				}
+			}
+		}
+		// End of face-down banished visibility enhancers
 	};
 	
+	window.Eyal_isIn = function(arr, thing)
+	{
+		return arr.indexOf(thing) >= 0;
+	}
 	// End of master duel selection UI
 	
 	// Start of PSCT highlighting
@@ -849,9 +1137,12 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 			$("#card-name").html('<a id="card-name-link" href="' + b + '" target="_blank">' + a.name + "</a>");
 			
 			// Start of Eyal's code.
-			var cardText = Engine.textToHtml(a.description);
-			
-			cardText = Eyal_MakePSCTColorOnEffect2(cardText);
+			if(Eyal_extensionActive)
+			{
+				var cardText = Engine.textToHtml(a.description);
+				
+				cardText = Eyal_MakePSCTColorOnEffect2(cardText);
+			}
 			// End of Eyal's code
 			$("#card-description").html(cardText);
 			$("#card-id").text(a.alias ? a.id + " [" + a.alias + "]" : a.id);
@@ -1142,3 +1433,141 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 	
 	// End of PSCT highlighting
 }
+
+/*
+async function loadImage(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = url;
+
+        img.onload = () => resolve(img);
+        img.onerror = (error) => reject(error);
+    });
+}
+
+async function retainBlackPart(url, retriesLeft, skipStart) {
+    if(typeof retriesLeft === "undefined")
+    {
+        retriesLeft = 100;
+    }
+
+    retriesLeft--;
+
+    let URL2;
+    
+    if(retriesLeft <= 0)
+        return;
+
+    if(!skipStart)
+    {
+        let img;
+        
+        try
+        {
+            img = await loadImage(url)
+        }
+        catch(error) {
+            console.log(error)
+            return await retainBlackPart(url, retriesLeft)
+        }
+    
+        console.log(img)
+        // Create a canvas element dynamically
+        let canvas = document.createElement('canvas');
+        let ctx = canvas.getContext('2d');
+    
+        // Set canvas dimensions to match the image
+        canvas.width = img.width;
+        canvas.height = img.height;
+    
+        // Draw the image onto the canvas
+        ctx.drawImage(img, 0, 0);
+    
+        const heightDefeceit = 100
+    
+        // Define the coordinates for the diagonal line
+        const startX = 0;
+        const startY = canvas.height; // Start from the bottom left
+        const endX = canvas.width;
+        const endY = heightDefeceit; // End at the top right
+    
+        // Set the line style (color, thickness, etc.)
+        // Draw the diagonal line
+        ctx.beginPath();
+        ctx.lineWidth = 5;
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.lineTo(0, endY);
+        ctx.fill()
+        ctx.clip()
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        URL2 = canvas.toDataURL();
+    }
+    else
+    {
+        URL2 = url;
+    }
+
+   let img2;
+        
+    try
+    {
+        img2 = await loadImage(url)
+    }
+    catch(error) {
+        console.log(error)
+        return await retainBlackPart(url, retriesLeft, true)
+    }
+    
+    canvas = document.createElement('canvas');
+    ctx = canvas.getContext('2d');
+
+    // Set canvas dimensions to match the image
+    canvas.width = img2.width;
+    canvas.height = img2.height;
+
+    // Draw the image onto the canvas
+    ctx.drawImage(img2, 0, 0);
+    
+    // Fill everything above the line
+    ctx.beginPath();
+    ctx.lineWidth = 5;
+    ctx.moveTo(0, 0);
+    ctx.lineTo(canvas.width, 0);
+    ctx.lineTo(canvas.width, heightDefeceit);
+    ctx.lineTo(0, heightDefeceit);
+    ctx.clip()
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Create a clipping path based on the line
+
+    // Clear the canvas (remove everything outside the clipping path)
+    //ctx.clearRect(0, canvas.height, canvas.width, heightDefeceit);
+
+    // Replace the original image with the edited canvas
+    return canvas.toDataURL();
+}
+
+// Don't confuse Game.selectableCards with Game.selectedCards
+			for(let def=0;def < Game.selectableCards.length;def++)
+			{
+                let cardRef = Game.selectableCards[def];
+				let Eyal_card = Game.getCard(cardRef.controller, cardRef.location, cardRef.sequence, cardRef.position)
+console.log(Eyal_card)
+                let cardDiv = Eyal_card.advancedSelectionImage.parent()
+
+                let cardImage = cardDiv.find(".game-selection-card-image")
+                
+                if(Eyal_card.dataReceived && Eyal_card.position == CardPosition.FACEDOWN)
+                {
+                    let cloneCardImage = cardImage.clone();
+                    cloneCardImage.css("top", "10px")
+
+                    let url =  cardImage.attr("src")
+                    
+                    url = await retainBlackPart(url)
+                    cardImage.attr("src", url)
+                }
+            }
+			*/
