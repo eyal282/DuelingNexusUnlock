@@ -660,18 +660,7 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 		window.onbeforeunload = function() { return true }
 	}
 	else if(Eyal_pageState == PAGESTATE_DUEL)
-	{
-		if(Game.players[0].name == Game.username || Game.isTag)
-		{
-			Eyal_yourIndex = 0;
-			Eyal_yourOpponentIndex = 1;
-		}
-		else if(Game.players[1].name == Game.username)
-		{
-			Eyal_yourIndex = 1;
-			Eyal_yourOpponentIndex = 0;
-		}
-		
+	{	
 		if(Game.isStarted && !Game.hasGameEnded)
 		{
 			window.onbeforeunload = function() { return true }
@@ -687,6 +676,21 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 		Eyal_yourOpponentIndex = 1;
 	}
 	
+	if(Eyal_pageState == PAGESTATE_DUEL || Eyal_pageState == PAGESTATE_REPLAY)
+	{
+		console.log("ba");
+		Game.isTag ? 2 > Game.position || 4 <= Game.position ? (Eyal_yourIndex = Game.tagPlayer[0],
+        Eyal_yourOpponentIndex = Game.tagPlayer[1] + 2) : (Eyal_yourIndex = Game.tagPlayer[0] + 2,
+        Eyal_yourOpponentIndex = Game.tagPlayer[1]) : (Eyal_yourIndex = 2 > Game.position ? Game.position : 0,
+        Eyal_yourOpponentIndex = 1 - Eyal_yourIndex);
+        if (Game.isSpectator) {
+            let dummy = Eyal_yourIndex
+            Eyal_yourIndex = Eyal_yourOpponentIndex;
+            Eyal_yourOpponentIndex = dummy;
+        }
+		
+		console.log("ab");
+	}
 	if(typeof Eyal_originalOnGameWin === "undefined" && typeof Game.onGameWin !== "undefined")
 	{
 		Function.prototype.clone = function()
@@ -1100,22 +1104,17 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 
 				let cardImage = cardDiv.find(".game-selection-card-image")
 				
-				if(Eyal_card.dataReceived && Eyal_card.position == CardPosition.FACEDOWN && Eyal_card.location == CardLocation.BANISHED)
+				if(Eyal_card.code != 0 && Eyal_card.position == CardPosition.FACEDOWN && Eyal_card.location == CardLocation.BANISHED)
 				{
 					let otherImage = cardImage.clone()
 					
 					otherImage.css("position", "absolute")
-					
-					if(Eyal_card.controller == Eyal_yourIndex)
-						otherImage.attr("src", Eyal_fdBanishURL1)
-					
-					else if(Eyal_card.controller == Eyal_yourOpponentIndex)
-						otherImage.attr("src", Eyal_fdBanishURL2)
+			
+					otherImage.attr("src", Eyal_fdBanishURL1)
 					
 					otherImage.insertBefore(cardImage)
-					Engine.setCardRarityImageElement(cardImage, Eyal_card.alias, Math.floor(Eyal_card.code / 1E11), Game.getRarityType(Eyal_card.alias));
-
-					
+					Game.updateRarity(cardImage, Eyal_card.code);
+					//Engine.setCardRarityImageElement(cardImage, Eyal_card.alias, Math.floor(Eyal_card.code / 1E11), Game.getRarityType(Eyal_card.alias));
 				}
 			}
 		}
@@ -1323,7 +1322,7 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 		effects.push("You cannot Special Summon monsters from the Extra Deck, except Link Monsters");
 		effects.push("you cannot Special Summon monsters");
 		
-		// Dumbass Rampant Rampager...
+		// Rampant Rampager...
 		effects.push("you cannot Special Summon");
 		effects.push("you cannot Special Summon monsters from the Extra Deck");
 		effects.push("you cannot Normal or Special Summon monsters");
