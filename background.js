@@ -678,7 +678,6 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
 	
 	if(Eyal_pageState == PAGESTATE_DUEL || Eyal_pageState == PAGESTATE_REPLAY)
 	{
-		console.log("ba");
 		Game.isTag ? 2 > Game.position || 4 <= Game.position ? (Eyal_yourIndex = Game.tagPlayer[0],
         Eyal_yourOpponentIndex = Game.tagPlayer[1] + 2) : (Eyal_yourIndex = Game.tagPlayer[0] + 2,
         Eyal_yourOpponentIndex = Game.tagPlayer[1]) : (Eyal_yourIndex = 2 > Game.position ? Game.position : 0,
@@ -688,8 +687,6 @@ function injectFunction(extensionActive, femOfSwitch, selectionUI, cardLogging)
             Eyal_yourIndex = Eyal_yourOpponentIndex;
             Eyal_yourOpponentIndex = dummy;
         }
-		
-		console.log("ab");
 	}
 	if(typeof Eyal_originalOnGameWin === "undefined" && typeof Game.onGameWin !== "undefined")
 	{
